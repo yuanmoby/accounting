@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#05060f"/>
+  <rect x="26" y="26" width="460" height="460" rx="78" fill="none" stroke="#00f0ff" stroke-width="6" opacity="0.45"/>
+  <text x="256" y="300" font-family="Consolas, monospace" font-size="200" font-weight="bold" fill="#00f0ff" text-anchor="middle" dominant-baseline="middle" style="filter: drop-shadow(0 0 18px #00f0ff)">¥</text>
+  <text x="256" y="420" font-family="Consolas, monospace" font-size="42" fill="#ff2d95" letter-spacing="8" text-anchor="middle">NEON</text>
+</svg>

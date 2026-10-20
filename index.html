@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#05060f">
+<title>NEON 记账 · 赛博账本</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="scanlines" aria-hidden="true"></div>
+<canvas id="bg" class="bg" aria-hidden="true"></canvas>
+
+<div class="app">
+  <header class="header">
+    <div>
+      <h1 class="logo glitch" data-text="NEON 记账">NEON 记账</h1>
+      <p class="sub">CYBER LEDGER // 赛博账本</p>
+    </div>
+    <button id="btnSettings" class="icon-btn" aria-label="设置">⚙</button>
+  </header>
+
+  <section class="balance card">
+    <div class="balance-label">本月支出 TOTAL</div>
+    <div class="balance-amount"><span class="yen">¥</span><span id="monthExpense">0.00</span></div>
+    <div class="balance-row">
+      <div><span class="k">今日支出</span><span id="todayExpense" class="v">¥0.00</span></div>
+      <div><span class="k">本月收入</span><span id="monthIncome" class="v">¥0.00</span></div>
+      <div><span class="k">本月笔数</span><span id="monthCount" class="v">0</span></div>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-range="today">今日</button>
+    <button class="tab" data-range="month">本月</button>
+    <button class="tab" data-range="all">全部</button>
+  </nav>
+
+  <section class="charts card">
+    <div class="chart-wrap">
+      <canvas id="donut" width="240" height="240"></canvas>
+      <div class="donut-center"><span id="donutTotal">¥0</span><small>分类占比</small></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="trend card">
+    <h2 class="card-title">近 7 日趋势</h2>
+    <canvas id="bars" height="160"></canvas>
+  </section>
+
+  <section class="list card">
+    <h2 class="card-title">流水记录 <span id="listCount" class="badge">0</span></h2>
+    <ul id="recordList" class="records"></ul>
+    <div id="empty" class="empty">暂无记录 · 点右下角 + 开始记账</div>
+  </section>
+
+  <footer class="footer">数据仅存于本机浏览器 · 可导出备份</footer>
+</div>
+
+<button id="btnAdd" class="fab" aria-label="添加记录">+</button>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-panel">
+    <h2 class="modal-title">记一笔 // INPUT</h2>
+    <div class="seg type-seg">
+      <button class="seg-btn active exp" data-type="expense">支出</button>
+      <button class="seg-btn inc" data-type="income">收入</button>
+    </div>
+    <label class="field">
+      <span>金额 AMOUNT</span>
+      <input id="fAmount" type="number" inputmode="decimal" placeholder="0.00" step="0.01" min="0">
+    </label>
+    <label class="field">
+      <span>分类 CATEGORY</span>
+      <div id="fCategory" class="chips"></div>
+    </label>
+    <label class="field">
+      <span>账户 ACCOUNT</span>
+      <div id="fAccount" class="chips"></div>
+    </label>
+    <label class="field">
+      <span>备注 NOTE</span>
+      <input id="fNote" type="text" placeholder="写点什么…">
+    </label>
+    <label class="field">
+      <span>时间 WHEN</span>
+      <div class="time-row">
+        <input id="fDate" type="date">
+        <input id="fTime" type="time">
+      </div>
+    </label>
+    <div class="modal-actions">
+      <button id="btnCancel" class="btn ghost">取消</button>
+      <button id="btnSave" class="btn primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings" class="settings hidden">
+  <div class="modal-panel">
+    <h2 class="modal-title">设置 // SETTINGS</h2>
+    <button id="btnImport" class="btn">导入账单 CSV / JSON</button>
+    <input id="fileInput" type="file" accept=".csv,.txt,.json" hidden>
+    <button id="btnExport" class="btn">导出备份 JSON</button>
+    <button id="btnSample" class="btn">载入示例数据</button>
+    <button id="btnClear" class="btn danger">清空全部数据</button>
+    <button id="btnCloseSettings" class="btn ghost">关闭</button>
+    <p class="hint">支持导入微信 / 支付宝导出的账单 CSV（在对应 App 的账单页申请下载）。数据仅保存在本机浏览器。</p>
+  </div>
+</div>
+
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
