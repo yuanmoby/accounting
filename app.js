@@ -642,12 +642,12 @@ function startOcr(file){
   img.onload = function(){
     $('ocrPreview').src = url;
     $('ocrPreview').classList.remove('hidden');
-    runTiles(img);
+    runTiles(img).catch(function(e){ status.innerHTML = '<span class="ocr-fail">图片处理失败：' + escapeHtml(e && e.message ? e.message : '未知错误') + '</span>'; });
   };
   img.onerror = function(){ status.innerHTML = '<span class="ocr-fail">图片加载失败，请重试</span>'; };
   img.src = url;
 
-  function runTiles(img){
+  async function runTiles(img){
     const W = img.naturalWidth, H = img.naturalHeight;
     const TILE = 2400, OVERLAP = 150;
     const tiles = [];
@@ -660,7 +660,7 @@ function startOcr(file){
         const c = document.createElement('canvas');
         c.width = W; c.height = h;
         c.getContext('2d').drawImage(img, 0, y, W, h, 0, 0, W, h);
-        tiles.push(canvasBlob(c));
+        tiles.push(await canvasBlob(c));
         y += h;
         if (y >= H) break;
         y = Math.max(0, y - OVERLAP);
