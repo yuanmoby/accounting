@@ -103,14 +103,14 @@
       <span>金额 AMOUNT</span>
       <input id="fAmount" type="number" inputmode="decimal" placeholder="0.00" step="0.01" min="0">
     </label>
-    <label class="field">
+    <div class="field">
       <span>分类 CATEGORY</span>
       <div id="fCategory" class="chips"></div>
-    </label>
-    <label class="field">
+    </div>
+    <div class="field">
       <span>账户 ACCOUNT</span>
       <div id="fAccount" class="chips"></div>
-    </label>
+    </div>
     <label class="field">
       <span>备注 NOTE</span>
       <input id="fNote" type="text" placeholder="写点什么…">
@@ -143,14 +143,14 @@
         <button id="btnSaveBudget" class="btn" style="margin:0;flex:1">保存</button>
       </div>
     </label>
-    <label class="field">
+    <div class="field">
       <span>主题配色 THEME</span>
       <div id="themeList" class="chips"></div>
-    </label>
-    <label class="field">
+    </div>
+    <div class="field">
       <span>快捷记账预设（点 ✕ 删除）</span>
       <ul id="presetList" class="preset-list"></ul>
-    </label>
+    </div>
     <button id="btnImport" class="btn">导入账单 CSV / JSON</button>
     <input id="fileInput" type="file" accept=".csv,.txt,.json" hidden>
     <button id="btnExportJson" class="btn">导出备份 JSON</button>
