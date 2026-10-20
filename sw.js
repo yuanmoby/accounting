@@ -1,4 +1,4 @@
-const CACHE = 'neon-ledger-v7';
+const CACHE = 'neon-ledger-v8';
 self.addEventListener('install', function(e){ self.skipWaiting(); });
 self.addEventListener('activate', function(e){
   e.waitUntil(

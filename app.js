@@ -557,9 +557,17 @@ function importCsv(file){
     save(); render(); toast('导入成功 ' + count + ' 条');
   }).catch(function(){ toast('读取文件失败'); });
 }/* ===== OCR ===== */
+function normDigits(s){
+  return String(s)
+    .replace(/[０-９]/g, function(ch){ return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+    .replace(/，/g, ',');
+}
 function numOf(line){
-  const m = String(line).match(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/) || String(line).match(/(\d+(?:\.\d{1,2})?)/);
-  return m ? parseFloat(m[1]) : null;
+  const s = normDigits(line);
+  let m = s.match(/[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/);
+  if (!m) m = s.match(/(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/);
+  if (!m) return null;
+  return parseFloat(m[1].replace(/,/g, ''));
 }
 function cleanMerchant(s){
   return String(s).replace(/[（(].*?[)）]/g, '').replace(/[:：]/g, '').trim();
@@ -577,18 +585,18 @@ function parseOcrText(text){
     }
     return null;
   }
-  amount = scan(/实付|付款金额|交易金额|支付金额|应付|合计/);
+  amount = scan(/实付|付款金额|交易金额|支付金额|应付|合计|总计|总额|消费金额|应付款/);
   if (amount == null) amount = scan(/金额/);
   if (amount == null){
     for (let i = 0; i < lines.length; i++){
-      const m = lines[i].match(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/);
-      if (m){ const v = parseFloat(m[1]); if (v > 0){ amount = v; break; } }
+      const m = normDigits(lines[i]).match(/[-]?\s*[¥￥]\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/);
+      if (m){ const v = parseFloat(m[1].replace(/,/g, '')); if (v > 0){ amount = v; break; } }
     }
   }
   if (amount == null){
     for (let i = 0; i < lines.length; i++){
-      const m = lines[i].match(/^[¥￥]?\s*(\d+(?:\.\d{1,2})?)\s*元?\s*$/);
-      if (m){ const v = parseFloat(m[1]); if (v > 0){ amount = v; break; } }
+      const m = normDigits(lines[i]).match(/^[-]?\s*[¥￥]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*元?\s*$/);
+      if (m){ const v = parseFloat(m[1].replace(/,/g, '')); if (v > 0){ amount = v; break; } }
     }
   }
   let merchant = '';
@@ -617,44 +625,87 @@ function parseOcrText(text){
     account: inferAccount(String(text))
   };
 }
+function canvasBlob(c){
+  return new Promise(function(resolve){
+    c.toBlob(function(b){ resolve(b); }, 'image/png');
+  });
+}
 function startOcr(file){
   if (typeof Tesseract === 'undefined'){
     toast('OCR 引擎未加载，请检查网络后重试');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = function(){
-    $('ocrPreview').src = reader.result;
-    $('ocrPreview').classList.remove('hidden');
-  };
-  reader.readAsDataURL(file);
   const status = $('ocrStatus');
-  status.innerHTML = '<span class="ocr-loading">识别中… 首次使用需下载语言包，请稍候</span>';
-  Tesseract.recognize(file, 'chi_sim+eng', {
-    logger: function(m){
-      if (m.status === 'recognizing text'){
-        status.innerHTML = '<span class="ocr-loading">识别中… ' + Math.round(m.progress * 100) + '%</span>';
+  status.innerHTML = '<span class="ocr-loading">正在加载图片…</span>';
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = function(){
+    $('ocrPreview').src = url;
+    $('ocrPreview').classList.remove('hidden');
+    runTiles(img);
+  };
+  img.onerror = function(){ status.innerHTML = '<span class="ocr-fail">图片加载失败，请重试</span>'; };
+  img.src = url;
+
+  function runTiles(img){
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const TILE = 2400, OVERLAP = 150;
+    const tiles = [];
+    if (H <= TILE){
+      tiles.push(file);
+    } else {
+      let y = 0;
+      while (y < H){
+        const h = Math.min(TILE, H - y);
+        const c = document.createElement('canvas');
+        c.width = W; c.height = h;
+        c.getContext('2d').drawImage(img, 0, y, W, h, 0, 0, W, h);
+        tiles.push(canvasBlob(c));
+        y += h;
+        if (y >= H) break;
+        y = Math.max(0, y - OVERLAP);
       }
     }
-  }).then(function(result){
-    const text = result.data.text || '';
-    const p = parseOcrText(text);
-    if (p.amount == null){
-      status.innerHTML = '<span class="ocr-fail">未识别到金额，请手动填写或换更清晰的截图</span>';
-      return;
+    status.innerHTML = '<span class="ocr-loading">识别中… 0%</span>';
+    const texts = [];
+    let done = 0;
+    const total = tiles.length;
+    function recognizeOne(tile, idx){
+      return Tesseract.recognize(tile, 'chi_sim+eng', {
+        logger: function(m){
+          if (m.status === 'recognizing text'){
+            const pct = Math.round((done + m.progress) / total * 100);
+            status.innerHTML = '<span class="ocr-loading">识别中… ' + pct + '%</span>';
+          }
+        }
+      }).then(function(res){
+        texts[idx] = res.data.text || '';
+        done++;
+      });
     }
-    setType('expense');
-    form.category = p.category;
-    form.account = p.account;
-    renderChips();
-    $('fAmount').value = p.amount;
-    $('fNote').value = p.merchant || '';
-    status.innerHTML = '<span class="ocr-ok">✓ 已识别：¥' + fmt(p.amount) + (p.merchant ? ' · ' + escapeHtml(p.merchant) : '') + '（请核对后保存）</span>';
-  }).catch(function(e){
-    status.innerHTML = '<span class="ocr-fail">识别失败：' + escapeHtml(e && e.message ? e.message : '未知错误') + '</span>';
-  });
+    let chain = Promise.resolve();
+    for (let i = 0; i < total; i++){
+      chain = chain.then(function(){ return recognizeOne(tiles[i], i); });
+    }
+    chain.then(function(){
+      const text = texts.join('\n');
+      const p = parseOcrText(text);
+      if (p.amount == null){
+        status.innerHTML = '<span class="ocr-fail">未识别到金额。建议截取该笔交易的详情页（而非整页长截图）再试，或手动填写金额</span>';
+        return;
+      }
+      setType('expense');
+      form.category = p.category;
+      form.account = p.account;
+      renderChips();
+      $('fAmount').value = p.amount;
+      $('fNote').value = p.merchant || '';
+      status.innerHTML = '<span class="ocr-ok">✓ 已识别：¥' + fmt(p.amount) + (p.merchant ? ' · ' + escapeHtml(p.merchant) : '') + '（请核对后保存）</span>';
+    }).catch(function(e){
+      status.innerHTML = '<span class="ocr-fail">识别失败：' + escapeHtml(e && e.message ? e.message : '未知错误') + '</span>';
+    });
+  }
 }
-
 /* ===== sample & clear ===== */
 function loadSample(){
   if (records.length && !confirm('已存在数据，是否追加示例数据？')) return;
