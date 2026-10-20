@@ -144,6 +144,8 @@ function openModal(){
   const now = new Date();
   $('fDate').value = dateStr(now);
   $('fTime').value = timeStr(now);
+  $('ocrStatus').innerHTML = '';
+  $('ocrPreview').classList.add('hidden');
   setTimeout(function(){ $('fAmount').focus(); }, 60);
 }
 function closeModal(){ $('modal').classList.add('hidden'); }
@@ -416,6 +418,106 @@ function initBg(){
   })();
 }
 
+/* OCR */
+function numOf(line){
+  const m = String(line).match(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/) || String(line).match(/(\d+(?:\.\d{1,2})?)/);
+  return m ? parseFloat(m[1]) : null;
+}
+function cleanMerchant(s){
+  return String(s).replace(/[（(].*?[)）]/g, '').replace(/[:：]/g, '').trim();
+}
+function parseOcrText(text){
+  const lines = String(text).split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+  let amount = null;
+  const specific = /实付|付款金额|交易金额|支付金额|应付|合计/;
+  const generic = /金额/;
+  function scan(re){
+    for (let i = 0; i < lines.length; i++){
+      if (re.test(lines[i])){
+        let v = numOf(lines[i]);
+        if (!v || v <= 0) v = numOf(lines[i + 1] || '');
+        if (v && v > 0) return v;
+      }
+    }
+    return null;
+  }
+  amount = scan(specific);
+  if (amount == null) amount = scan(generic);
+  if (amount == null){
+    for (let i = 0; i < lines.length; i++){
+      const m = lines[i].match(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/);
+      if (m){ const v = parseFloat(m[1]); if (v > 0){ amount = v; break; } }
+    }
+  }
+  if (amount == null){
+    for (let i = 0; i < lines.length; i++){
+      const m = lines[i].match(/^[¥￥]?\s*(\d+(?:\.\d{1,2})?)\s*元?\s*$/);
+      if (m){ const v = parseFloat(m[1]); if (v > 0){ amount = v; break; } }
+    }
+  }
+  let merchant = '';
+  const merchantKw = /收款方|收款单位|商户全称|商户名称|商户|交易对方|收款账户|付款给|商家|收款人/;
+  for (let i = 0; i < lines.length; i++){
+    if (merchantKw.test(lines[i])){
+      const next = lines[i + 1];
+      if (next && /[\u4e00-\u9fa5]/.test(next) && next.length <= 30){ merchant = cleanMerchant(next); break; }
+      const inline = lines[i].replace(merchantKw, '').trim();
+      if (inline && inline.length >= 2){ merchant = cleanMerchant(inline); break; }
+    }
+  }
+  if (!merchant){
+    const skip = /支付|微信|支付宝|账单|金额|时间|单号|成功|失败|状态|方式|凭证|交易|退款|商家订单|订单|明细|详情|当前|关闭|返回|已完成|查看|更多/;
+    for (let i = 0; i < lines.length; i++){
+      const t = lines[i].replace(/[^\u4e00-\u9fa5A-Za-z0-9·&()（）\- ]/g, '').trim();
+      if (t.length >= 2 && t.length <= 24 && /[\u4e00-\u9fa5]/.test(t) && !skip.test(t)){
+        merchant = t; break;
+      }
+    }
+  }
+  return {
+    amount: amount != null ? Math.round(amount * 100) / 100 : null,
+    merchant: merchant.slice(0, 24),
+    category: merchant ? inferCategory(merchant + ' ' + String(text)) : '其他',
+    account: inferAccount(String(text))
+  };
+}
+function startOcr(file){
+  if (typeof Tesseract === 'undefined'){
+    toast('OCR 引擎未加载，请检查网络后重试');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(){
+    $('ocrPreview').src = reader.result;
+    $('ocrPreview').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+  const status = $('ocrStatus');
+  status.innerHTML = '<span class="ocr-loading">识别中… 首次使用需下载语言包，请稍候</span>';
+  Tesseract.recognize(file, 'chi_sim+eng', {
+    logger: function(m){
+      if (m.status === 'recognizing text'){
+        status.innerHTML = '<span class="ocr-loading">识别中… ' + Math.round(m.progress * 100) + '%</span>';
+      }
+    }
+  }).then(function(result){
+    const text = result.data.text || '';
+    const p = parseOcrText(text);
+    if (p.amount == null){
+      status.innerHTML = '<span class="ocr-fail">未识别到金额，请手动填写或换更清晰的截图</span>';
+      return;
+    }
+    setType('expense');
+    form.category = p.category;
+    form.account = p.account;
+    renderChips();
+    $('fAmount').value = p.amount;
+    $('fNote').value = p.merchant || '';
+    status.innerHTML = '<span class="ocr-ok">✓ 已识别：¥' + fmt(p.amount) + (p.merchant ? ' · ' + escapeHtml(p.merchant) : '') + '（请核对后保存）</span>';
+  }).catch(function(e){
+    status.innerHTML = '<span class="ocr-fail">识别失败：' + escapeHtml(e && e.message ? e.message : '未知错误') + '</span>';
+  });
+}
 function bindEvents(){
   document.querySelectorAll('.tab').forEach(function(t){
     t.addEventListener('click', function(){
@@ -428,6 +530,11 @@ function bindEvents(){
   $('btnAdd').addEventListener('click', openModal);
   $('btnCancel').addEventListener('click', closeModal);
   $('btnSave').addEventListener('click', saveRecord);
+  $('btnOcr').addEventListener('click', function(){ $('ocrInput').click(); });
+  $('ocrInput').addEventListener('change', function(e){
+    if (e.target.files[0]) startOcr(e.target.files[0]);
+    e.target.value = '';
+  });
   $('fAmount').addEventListener('keydown', function(e){ if (e.key === 'Enter') saveRecord(); });
   $('modal').addEventListener('click', function(e){ if (e.target === $('modal')) closeModal(); });
   document.querySelectorAll('.seg-btn').forEach(function(b){

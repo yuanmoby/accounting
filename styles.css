@@ -230,3 +230,12 @@ body::before{
   .logo{font-size:27px}
   .balance-amount{font-size:40px}
 }
+/* OCR */
+.ocr-btn{border-color:rgba(0,240,255,.45);color:var(--cyan);background:rgba(0,240,255,.06);letter-spacing:1px}
+.ocr-btn:hover{box-shadow:0 0 16px rgba(0,240,255,.4)}
+.ocr-preview{display:block;width:100%;max-height:180px;object-fit:contain;border:1px solid var(--line);border-radius:10px;margin:4px 0 10px;background:rgba(0,0,0,.3)}
+.ocr-preview.hidden{display:none}
+.ocr-status{font-size:12px;margin:0 0 12px;min-height:16px;line-height:1.6}
+.ocr-loading{color:var(--cyan)}
+.ocr-ok{color:var(--green)}
+.ocr-fail{color:var(--orange)}
