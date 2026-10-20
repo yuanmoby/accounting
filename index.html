@@ -24,37 +24,59 @@
     <button id="btnSettings" class="icon-btn" aria-label="设置">⚙</button>
   </header>
 
+  <nav class="monthnav">
+    <button id="btnPrev" class="mn-btn" aria-label="上个月">‹</button>
+    <div class="mn-label" id="monthLabel">2026年10月</div>
+    <button id="btnNext" class="mn-btn" aria-label="下个月">›</button>
+    <button id="btnToday" class="mn-today">今</button>
+  </nav>
+
   <section class="balance card">
     <div class="balance-label">本月支出 TOTAL</div>
     <div class="balance-amount"><span class="yen">¥</span><span id="monthExpense">0.00</span></div>
+    <div class="budget-row">
+      <div class="budget-bar" id="budgetWrap"><div class="budget-fill" id="budgetBar"></div></div>
+      <span class="budget-text" id="budgetText">未设置预算</span>
+    </div>
     <div class="balance-row">
       <div><span class="k">今日支出</span><span id="todayExpense" class="v">¥0.00</span></div>
       <div><span class="k">本月收入</span><span id="monthIncome" class="v">¥0.00</span></div>
+      <div><span class="k">日均支出</span><span id="dailyAvg" class="v">¥0.00</span></div>
       <div><span class="k">本月笔数</span><span id="monthCount" class="v">0</span></div>
     </div>
   </section>
 
-  <nav class="tabs">
-    <button class="tab active" data-range="today">今日</button>
-    <button class="tab" data-range="month">本月</button>
-    <button class="tab" data-range="all">全部</button>
-  </nav>
+  <section class="presets card">
+    <div class="card-title">快捷记账 // QUICK</div>
+    <div id="presetChips" class="chips preset-chips"></div>
+  </section>
 
   <section class="charts card">
+    <div class="donut-tabs">
+      <button class="donut-tab active" data-mode="category">分类</button>
+      <button class="donut-tab" data-mode="account">账户</button>
+    </div>
     <div class="chart-wrap">
       <canvas id="donut" width="240" height="240"></canvas>
-      <div class="donut-center"><span id="donutTotal">¥0</span><small>分类占比</small></div>
+      <div class="donut-center"><span id="donutTotal">¥0</span><small>支出占比</small></div>
     </div>
     <div class="legend" id="legend"></div>
   </section>
 
   <section class="trend card">
-    <h2 class="card-title">近 7 日趋势</h2>
+    <h2 class="card-title">本月每日支出</h2>
     <canvas id="bars" height="160"></canvas>
+  </section>
+
+  <section class="acct card">
+    <h2 class="card-title">账户分布</h2>
+    <div id="acctBreakdown"></div>
   </section>
 
   <section class="list card">
     <h2 class="card-title">流水记录 <span id="listCount" class="badge">0</span></h2>
+    <input id="searchInput" class="search" type="search" placeholder="搜索备注 / 分类 / 账户…">
+    <div id="catFilter" class="chips cat-filter"></div>
     <ul id="recordList" class="records"></ul>
     <div id="empty" class="empty">暂无记录 · 点右下角 + 开始记账</div>
   </section>
@@ -66,7 +88,7 @@
 
 <div id="modal" class="modal hidden">
   <div class="modal-panel">
-    <h2 class="modal-title">记一笔 // INPUT</h2>
+    <h2 class="modal-title" id="modalTitle">记一笔 // INPUT</h2>
     <div class="seg type-seg">
       <button class="seg-btn active exp" data-type="expense">支出</button>
       <button class="seg-btn inc" data-type="income">收入</button>
@@ -76,6 +98,7 @@
     <input id="ocrInput" type="file" accept="image/*" capture="environment" hidden>
     <img id="ocrPreview" class="ocr-preview hidden" alt="截图预览">
     <div id="ocrStatus" class="ocr-status"></div>
+
     <label class="field">
       <span>金额 AMOUNT</span>
       <input id="fAmount" type="number" inputmode="decimal" placeholder="0.00" step="0.01" min="0">
@@ -99,6 +122,10 @@
         <input id="fTime" type="time">
       </div>
     </label>
+    <label class="field checkbox">
+      <input id="fSavePreset" type="checkbox">
+      <span>同时保存为快捷预设</span>
+    </label>
     <div class="modal-actions">
       <button id="btnCancel" class="btn ghost">取消</button>
       <button id="btnSave" class="btn primary">保存</button>
@@ -109,13 +136,29 @@
 <div id="settings" class="settings hidden">
   <div class="modal-panel">
     <h2 class="modal-title">设置 // SETTINGS</h2>
+    <label class="field">
+      <span>月度预算 BUDGET</span>
+      <div class="time-row">
+        <input id="setBudget" type="number" inputmode="numeric" step="100" min="0" placeholder="3000">
+        <button id="btnSaveBudget" class="btn" style="margin:0;flex:1">保存</button>
+      </div>
+    </label>
+    <label class="field">
+      <span>主题配色 THEME</span>
+      <div id="themeList" class="chips"></div>
+    </label>
+    <label class="field">
+      <span>快捷记账预设（点 ✕ 删除）</span>
+      <ul id="presetList" class="preset-list"></ul>
+    </label>
     <button id="btnImport" class="btn">导入账单 CSV / JSON</button>
     <input id="fileInput" type="file" accept=".csv,.txt,.json" hidden>
-    <button id="btnExport" class="btn">导出备份 JSON</button>
+    <button id="btnExportJson" class="btn">导出备份 JSON</button>
+    <button id="btnExportCsv" class="btn">导出流水 CSV（Excel 可打开）</button>
     <button id="btnSample" class="btn">载入示例数据</button>
     <button id="btnClear" class="btn danger">清空全部数据</button>
     <button id="btnCloseSettings" class="btn ghost">关闭</button>
-    <p class="hint">支持导入微信 / 支付宝导出的账单 CSV（在对应 App 的账单页申请下载）。数据仅保存在本机浏览器。</p>
+    <p class="hint">数据仅保存在本机浏览器。微信/支付宝不开放个人账单 API，可用「截图识别」或手动记账。识别全程在本机完成，图片不会上传。</p>
   </div>
 </div>
 

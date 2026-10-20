@@ -50,14 +50,16 @@ function roundRect(ctx, x, y, w, h, r){
   ctx.closePath();
 }
 
-function drawBars(canvas, data){
+function drawBars(canvas, data, opts){
+  opts = opts || {};
+  const dense = !!opts.dense;
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth || 320, h = canvas.clientHeight || 160;
   canvas.width = w * dpr; canvas.height = h * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const padL = 8, padR = 8, padT = 14, padB = 26;
+  const padL = 6, padR = 6, padT = 14, padB = 26;
   const chartW = w - padL - padR, chartH = h - padT - padB;
   const values = data.map(function(d){ return Number(d.value || 0); });
   const max = Math.max.apply(null, values.concat([1]));
@@ -68,7 +70,7 @@ function drawBars(canvas, data){
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
   }
   const bw = chartW / data.length;
-  const barW = Math.min(28, bw * 0.55);
+  const barW = dense ? Math.max(2, bw * 0.6) : Math.min(28, bw * 0.55);
   data.forEach(function(d, i){
     const x = padL + bw * i + (bw - barW) / 2;
     const v = Number(d.value || 0);
@@ -83,11 +85,13 @@ function drawBars(canvas, data){
     roundRect(ctx, x, y, barW, bh, 4);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#6f8a9c';
-    ctx.font = '10px Consolas, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(d.label, x + barW / 2, h - 9);
-    if (v > 0){
+    if (d.label){
+      ctx.fillStyle = '#6f8a9c';
+      ctx.font = '10px Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(d.label, x + barW / 2, h - 9);
+    }
+    if (!dense && v > 0){
       ctx.fillStyle = '#d8f3ff';
       ctx.fillText('¥' + v.toFixed(0), x + barW / 2, y - 6);
     }
