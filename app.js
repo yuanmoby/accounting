@@ -560,7 +560,9 @@ function importCsv(file){
 function normDigits(s){
   return String(s)
     .replace(/[０-９]/g, function(ch){ return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
-    .replace(/，/g, ',');
+    .replace(/．/g, '.')
+    .replace(/，/g, ',')
+    .replace(/－/g, '-');
 }
 function numOf(line){
   const s = normDigits(line);
@@ -613,7 +615,7 @@ function parseOcrText(text){
     const skip = /支付|微信|支付宝|账单|金额|时间|单号|成功|失败|状态|方式|凭证|交易|退款|商家订单|订单|明细|详情|当前|关闭|返回|已完成|查看|更多/;
     for (let i = 0; i < lines.length; i++){
       const t = lines[i].replace(/[^\u4e00-\u9fa5A-Za-z0-9·&()（）\- ]/g, '').trim();
-      if (t.length >= 2 && t.length <= 24 && /[\u4e00-\u9fa5]/.test(t) && !skip.test(t)){
+      if (t.length >= 2 && t.length <= 24 && /[\u4e00-\u9fa5]/.test(t) && !skip.test(t) && !/\d{2,}/.test(t)){
         merchant = t; break;
       }
     }
